@@ -215,7 +215,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2020-03-15 19:06:48 / 修改时间：19:08:51" itemprop="dateCreated datePublished" datetime="2020-03-15T19:06:48+08:00">2020-03-15</time>
+              <time title="创建时间：2020-03-15 19:06:48 / 修改时间：19:11:37" itemprop="dateCreated datePublished" datetime="2020-03-15T19:06:48+08:00">2020-03-15</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -241,10 +241,13 @@
 
       
           <h2 id="字节码"><a href="#字节码" class="headerlink" title="字节码"></a>字节码</h2><ol>
-<li>使用javap -verbose ByteCodeTest1命令分析一个字节码文件时，将会分析该字节码文件的魔数，版本号，常量池，类信息，类的构造方法，类中的方法信息，类变量与成员变量的信息。</li>
-<li>魔数：所有的.class文件的前四个字节都是魔数，魔数值为固定值：0xCAFEBABE（咖啡宝贝）</li>
-<li>版本号：魔数后面4个字节是版本信息，前两个字节表示minor version（次版本号），后两个字节表示major version（主版本号），十六进制34=十进制52。所以该文件的版本号为1.8.0。低版本的编译器编译的字节码可以在高版本的JVM下运行，反过来则不行。</li>
-<li>常量池（constant pool）：版本号之后的就是常量池入口，一个java类定义的很多信息都是由常量池来维护和描述的，可以将常量池看作是class文件的资源仓库，包括java类定义的方法和变量信息，常量池中主要存储两类常量：字面量和符号引用。字面量如文本字符串、java中生命的final常量值等，符号引用如类和接口的全局限定名(包名+类名)，字段的名称和描述符(对应的是字节码层面，而不是源程序)，方法的名称和描述符等。</li></ol>
+<li><p>使用javap -verbose ByteCodeTest1命令分析一个字节码文件时，将会分析该字节码文件的魔数，版本号，常量池，类信息，类的构造方法，类中的方法信息，类变量与成员变量的信息。</p>
+</li>
+<li><p>魔数：所有的.class文件的前四个字节都是魔数，魔数值为固定值：0xCAFEBABE（咖啡宝贝）</p>
+</li>
+<li><p>版本号：魔数后面4个字节是版本信息，前两个字节表示minor version（次版本号），后两个字节表示major version（主版本号），十六进制34=十进制52。所以该文件的版本号为1.8.0。低版本的编译器编译的字节码可以在高版本的JVM下运行，反过来则不行。</p>
+</li>
+<li><p>常量池（constant pool）：版本号之后的就是常量池入口，一个java类定义的很多信息都是由常量池来维护和描述的，</p></li></ol>
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2020/03/15/%E5%AD%97%E8%8A%82%E7%A0%81%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/#more" rel="contents">
