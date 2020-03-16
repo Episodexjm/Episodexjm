@@ -54,7 +54,7 @@
 <meta property="og:description" content="常量池写在前面关于常量池的各种讲解版本可以在各大博客中见到五花八门的分析，其中不乏一些滥用“常量池”这样的术语，我也查看了不少博客关于讲解有关这方面的内容，不过感觉就是越看越不懂，甚至有的讲解和自己的实践相悖。因为JVM确实有许许多多的概念值得深思，也难于理解。对于我这种才入门学习JVM的更是如此。因此，在这里我找到了几篇关于JVM有关常量池讲解的内容，并在此作为总结。主要是参看了R大所写的一些观">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-03-16T13:41:00.000Z">
-<meta property="article:modified_time" content="2020-03-16T15:10:49.639Z">
+<meta property="article:modified_time" content="2020-03-16T15:46:51.583Z">
 <meta property="article:author" content="Episodexjm">
 <meta name="twitter:card" content="summary">
 
@@ -218,7 +218,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2020-03-16 21:41:00 / 修改时间：23:10:49" itemprop="dateCreated datePublished" datetime="2020-03-16T21:41:00+08:00">2020-03-16</time>
+              <time title="创建时间：2020-03-16 21:41:00 / 修改时间：23:46:51" itemprop="dateCreated datePublished" datetime="2020-03-16T21:41:00+08:00">2020-03-16</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -267,7 +267,7 @@
 </li>
 <li><p>全局字符串常量池：HotSpot VM里，记录interned string的一个全局表叫做StringTable，它本质上就是个<code>HashSet&lt;String&gt;</code>。这是个纯运行时的结构，而且是惰性（lazy）维护的。注意它只存储对<code>java.lang.String</code>实例的引用，而不存储String对象的内容。 注意，它只存了引用，根据这个引用可以得到具体的String对象。一般位于java heap（jdk1.7）。</p>
 <h4 id="字面量和字符串常量池"><a href="#字面量和字符串常量池" class="headerlink" title="字面量和字符串常量池"></a>字面量和字符串常量池</h4><p>我们在定义字符串常量的时候，查看class文件常量池会发现两种类型<code>CONSTANT_String</code>和<code>CONSTANT_Utf8</code>前者实际上只是一个索引，索引到后者，后者才是真正持有字符串常量内容的拥有者。那么，字面量和字符串常量池是怎样一种关系呢？<code>CONSTANT_Utf8</code>会在类加载的过程中就全部创建出来(进入运行时常量池)，这时候实际上字符串常量池中没有对应的<strong>字符串的引用</strong>，在第一次引用ldc指令被第一次执行到的时候才会resolve，<code>ldc</code>字节码在这里的执行语义是：到当前类的运行时常量池，去查找该index（实际上是<code>CONSTANT_String</code>所持有的索引）对应的项，如果该项尚未resolve则resolve之，并返回resolve后的内容。在遇到String类型常量时，在resolve的过程中如果发现StringTable已经有了内容匹配的<code>java.lang.String</code>的引用，则直接返回这个引用，反之，如果StringTable里尚未有内容匹配的String实例的引用，则会在Java堆里创建一个对应内容的String对象，然后在StringTable记录下这个引用，并返回这个引用出去。然后通过ldc将这个引用压到操作数栈顶。<br>由此可见，<strong>lcd指令也就是说是否需要将字符串引用从字符串常量池中压入栈顶成为了关键</strong>。</p>
-<h4 id="再看问题"><a href="#再看问题" class="headerlink" title="再看问题"></a>再看问题</h4><p>“static” “he” “llo” “hello”都会进入Class的常量池， 按照上面说的，类加载阶段由于resolve 阶段是lazy的，所以是不会创建实例，更不会驻留字符串常量池了。是要注意这个“static”和其他三个不一样，它是静态的，主动使用类的时候会初始化该类，初始化阶段，会为静态变量指定初始值，也就是要把“static”赋值给s1（先ldc指令把它放到栈顶，然后用putstatic指令完成赋值。注意，ldc指令，根据上面说的，会创建”static”字符串对象，并且会保存一个指向它的引用到字符串常量池）。因为要对”he”和”llo”进行操作，所以<strong>要先用ldc把”he”和”llo”送到栈顶，换句话说，会创建他俩的对象，并且会保存引用到字符串常量池中</strong>然后中间的加号就是创建了StringBuild对象，然后将这些字符串append，最后调用StringBuilder对象的toString方法得到一个String对象（内容是hello，注意这个toString方法会new一个String对象），并把它赋值给s1，<strong>但是并未进入常量池，因为不需要使用ldc指令，也就不需要resolve</strong>。<br>调用intern方法，字符串常量池里面没有，它会把上面的这个hello对象的引用保存到字符串常量池，然后返回这个引用，但是这个返回值我们并没有使用变量去接收，所以没用。intern方法作用：</p>
+<h4 id="再看问题"><a href="#再看问题" class="headerlink" title="再看问题"></a>再看问题</h4><p>“static” “he” “llo” “hello”都会进入Class的常量池， 按照上面说的，类加载阶段由于resolve 阶段是lazy的，所以是不会创建实例，更不会驻留字符串常量池了。是要注意这个“static”和其他三个不一样，它是静态的，主动使用类的时候会初始化该类，初始化阶段，会为静态变量指定初始值，也就是要把“static”赋值给s1（先ldc指令把它放到栈顶，然后用putstatic指令完成赋值。注意，ldc指令，根据上面说的，会创建”static”字符串对象，并且会保存一个指向它的引用到字符串常量池）。因为要对”he”和”llo”进行操作，所以<strong>要先用ldc把”he”和”llo”送到栈顶，换句话说，会创建他俩的对象，并且会保存引用到字符串常量池中</strong>然后中间的加号就是创建了StringBuild对象，然后将这些字符串append，最后调用StringBuilder对象的toString方法得到一个String对象（内容是hello，注意这个toString方法会new一个String对象），（当然如果是字符串直接相加则不是这种过程，而是直接拼接）并把它赋值给s1，<strong>但是并未进入常量池，因为不需要使用ldc指令，也就不需要resolve</strong>。<br>调用intern方法，字符串常量池里面没有，它会把上面的这个hello对象的引用保存到字符串常量池，然后返回这个引用，但是这个返回值我们并没有使用变量去接收，所以没用。intern方法作用：</p>
 <blockquote>
 <p>JDK7中，如果常量池中已经有了这个字符串，那么直接返回常量池中它的引用，如果没有，那就将它的引用保存一份到字符串常量池，然后直接返回这个引用。敲黑板，这个方法是有返回值的，是返回引用。</p>
 </blockquote>
