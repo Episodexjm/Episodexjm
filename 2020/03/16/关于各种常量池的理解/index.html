@@ -46,27 +46,31 @@
   };
 </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Hexo">
-<meta property="og:url" content="http://episodexjm.github.io/index.html">
+  <meta name="description" content="常量池写在前面关于常量池的各种讲解版本可以在各大博客中见到五花八门的分析，其中不乏一些滥用“常量池”这样的术语，我也查看了不少博客关于讲解有关这方面的内容，不过感觉就是越看越不懂，甚至有的讲解和自己的实践相悖。因为JVM确实有许许多多的概念值得深思，也难于理解。对于我这种才入门学习JVM的更是如此。因此，在这里我找到了几篇关于JVM有关常量池讲解的内容，并在此作为总结。主要是参看了R大所写的一些观">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于各种常量池的理解">
+<meta property="og:url" content="http://episodexjm.github.io/2020/03/16/%E5%85%B3%E4%BA%8E%E5%90%84%E7%A7%8D%E5%B8%B8%E9%87%8F%E6%B1%A0%E7%9A%84%E7%90%86%E8%A7%A3/index.html">
 <meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="常量池写在前面关于常量池的各种讲解版本可以在各大博客中见到五花八门的分析，其中不乏一些滥用“常量池”这样的术语，我也查看了不少博客关于讲解有关这方面的内容，不过感觉就是越看越不懂，甚至有的讲解和自己的实践相悖。因为JVM确实有许许多多的概念值得深思，也难于理解。对于我这种才入门学习JVM的更是如此。因此，在这里我找到了几篇关于JVM有关常量池讲解的内容，并在此作为总结。主要是参看了R大所写的一些观">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-03-16T13:41:00.000Z">
+<meta property="article:modified_time" content="2020-03-16T15:09:32.563Z">
 <meta property="article:author" content="Episodexjm">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://episodexjm.github.io/">
+<link rel="canonical" href="http://episodexjm.github.io/2020/03/16/%E5%85%B3%E4%BA%8E%E5%90%84%E7%A7%8D%E5%B8%B8%E9%87%8F%E6%B1%A0%E7%9A%84%E7%90%86%E8%A7%A3/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome: true,
-    isPost: false
+    isHome: false,
+    isPost: true
   };
 </script>
 
-  <title>Hexo</title>
+  <title>关于各种常量池的理解 | Hexo</title>
   
 
 
@@ -186,10 +190,10 @@
             
 
   <div class="posts-expand">
-        
+      
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://episodexjm.github.io/2020/03/16/%E5%85%B3%E4%BA%8E%E5%90%84%E7%A7%8D%E5%B8%B8%E9%87%8F%E6%B1%A0%E7%9A%84%E7%90%86%E8%A7%A3/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -203,8 +207,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/16/%E5%85%B3%E4%BA%8E%E5%90%84%E7%A7%8D%E5%B8%B8%E9%87%8F%E6%B1%A0%E7%9A%84%E7%90%86%E8%A7%A3/" class="post-title-link" itemprop="url">关于各种常量池的理解</a>
+          关于各种常量池的理解
         </h1>
 
         <div class="post-meta">
@@ -240,7 +243,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h3 id="常量池"><a href="#常量池" class="headerlink" title="常量池"></a>常量池</h3><h4 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h4><p>关于常量池的各种讲解版本可以在各大博客中见到五花八门的分析，其中不乏一些滥用“常量池”这样的术语，我也查看了不少博客关于讲解有关这方面的内容，不过感觉就是越看越不懂，甚至有的讲解和自己的实践相悖。因为JVM确实有许许多多的概念值得深思，也难于理解。对于我这种才入门学习JVM的更是如此。因此，在这里我找到了几篇关于JVM有关<a href="https://www.zhihu.com/question/55994121" target="_blank" rel="noopener">常量池讲解</a>的内容，并在此作为总结。主要是参看了R大所写的<a href="https://www.iteye.com/blog/rednaxelafx-774673" target="_blank" rel="noopener">一些观点</a>。</p>
+        <h3 id="常量池"><a href="#常量池" class="headerlink" title="常量池"></a>常量池</h3><h4 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h4><p>关于常量池的各种讲解版本可以在各大博客中见到五花八门的分析，其中不乏一些滥用“常量池”这样的术语，我也查看了不少博客关于讲解有关这方面的内容，不过感觉就是越看越不懂，甚至有的讲解和自己的实践相悖。因为JVM确实有许许多多的概念值得深思，也难于理解。对于我这种才入门学习JVM的更是如此。因此，在这里我找到了几篇关于JVM有关<a href="https://www.zhihu.com/question/55994121" target="_blank" rel="noopener">常量池讲解</a>的内容，并在此作为总结。主要是参看了R大所写的<a href="https://www.iteye.com/blog/rednaxelafx-774673" target="_blank" rel="noopener">一些观点</a>。</p>
 <h4 id="问题引入"><a href="#问题引入" class="headerlink" title="问题引入"></a>问题引入</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">NewTest1</span></span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> String s1=<span class="string">"static"</span>;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        String s2=<span class="keyword">new</span> String(<span class="string">"he"</span>)+<span class="keyword">new</span> String(<span class="string">"llo"</span>);</span><br><span class="line">        s1.intern();</span><br><span class="line">        String s3=<span class="string">"hello"</span>;</span><br><span class="line">        System.out.println(s2==s3);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>关于这样的问题网上随处可见，在此记录下并用jdk8进行运行结果是<code>false</code>，可是为什么是<code>false</code>呢，先来分析各种常量池。</p>
 <h4 id="常量池种类"><a href="#常量池种类" class="headerlink" title="常量池种类"></a>常量池种类</h4><ol>
@@ -271,284 +274,33 @@
 </ol>
 <p>所以，进行这样的分析后，对JVM理解更加深刻，类似的问题也会迎刃而解。</p>
 
-      
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
 
         
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://episodexjm.github.io/2020/03/15/%E5%AD%97%E8%8A%82%E7%A0%81%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">
 
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Episodexjm">
-      <meta itemprop="description" content="">
-    </span>
 
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/15/%E5%AD%97%E8%8A%82%E7%A0%81%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" class="post-title-link" itemprop="url">字节码学习笔记</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2020-03-15 19:06:48 / 修改时间：19:13:45" itemprop="dateCreated datePublished" datetime="2020-03-15T19:06:48+08:00">2020-03-15</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/JVM/" itemprop="url" rel="index">
-                    <span itemprop="name">JVM</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="字节码"><a href="#字节码" class="headerlink" title="字节码"></a>字节码</h2><ol>
-<li><p>使用javap -verbose ByteCodeTest1命令分析一个字节码文件时，将会分析该字节码文件的魔数，版本号，常量池，类信息，类的构造方法，类中的方法信息，类变量与成员变量的信息。</p>
-</li>
-<li><p>魔数：所有的.class文件的前四个字节都是魔数，魔数值为固定值：0xCAFEBABE（咖啡宝贝）</p>
-</li>
-<li><p>版本号：魔数后面4个字节是版本信息，前两个字节表示minor version（次版本号），后两个字节表示major version（主版本号），十六进制34=十进制52。所以该文件的版本号为1.8.0。低版本的编译器编译的字节码可以在高版本的JVM下运行，反过来则不行。</p>
-</li>
-<li><p>常量池（constant pool）：版本号之后的就是常量池入口，一个java类定义的很多信息都是由常量池来维护和描述的，</p></li></ol>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/03/15/%E5%AD%97%E8%8A%82%E7%A0%81%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/15/%E5%AD%97%E8%8A%82%E7%A0%81%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="prev" title="字节码学习笔记">
+      <i class="fa fa-chevron-left"></i> 字节码学习笔记
+    </a></div>
+      <div class="post-nav-item"></div>
     </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
       </footer>
-  </article>
-  
-  
-  
-
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://episodexjm.github.io/2020/02/29/ClassLoader/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Episodexjm">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/02/29/ClassLoader/" class="post-title-link" itemprop="url">ClassLoader详解</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-02-29 15:36:15" itemprop="dateCreated datePublished" datetime="2020-02-29T15:36:15+08:00">2020-02-29</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-03-07 12:15:25" itemprop="dateModified" datetime="2020-03-07T12:15:25+08:00">2020-03-07</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/JVM/" itemprop="url" rel="index">
-                    <span itemprop="name">JVM</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
     
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h3 id="ClassLoader是什么？"><a href="#ClassLoader是什么？" class="headerlink" title="ClassLoader是什么？"></a>ClassLoader是什么？</h3><p>当我们写完java源程序后，会生成.class这样的文件，而这样的文件从磁盘上加载到内存中就是ClassLoader需要做的事，并且将字节码文件转换成JVM要求的格式。可以来看看JDK对ClassLoader的描述。</p>
-<blockquote>
-<p>A class loader is an object that is responsible for loading classes. The class ClassLoader is an abstract class. Given the binary name of a class, a class loader should attempt to locate or generate data that constitutes a definition for the class. A typical strategy is to transform the name into a file name and then read a “class file” of that name from a file system.</p>
-</blockquote>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/02/29/ClassLoader/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://episodexjm.github.io/2020/02/14/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B01/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Episodexjm">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/02/14/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B01/" class="post-title-link" itemprop="url">学习笔记(一)</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-02-14 18:53:45" itemprop="dateCreated datePublished" datetime="2020-02-14T18:53:45+08:00">2020-02-14</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-03-07 12:15:51" itemprop="dateModified" datetime="2020-03-07T12:15:51+08:00">2020-03-07</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" itemprop="url" rel="index">
-                    <span itemprop="name">操作系统</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="操作系统概述"><a href="#操作系统概述" class="headerlink" title="操作系统概述"></a>操作系统概述</h2><ol>
-<li>概念：</li>
-<li>功能：<ol>
-<li>作为系统的管理者<ul>
-<li>文件管理（逐层打开文件夹，找到qq程序） </li>
-<li>存储器管理（双击打开qq）</li>
-<li>处理机管理（对应的qq进程被处理机(CPU)管理）</li>
-<li>设备管理（将摄像头分配给进程）</li></ul></li></ol></li></ol>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2020/02/14/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B01/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
   </article>
   
   
   
 
   </div>
-
-  
-
 
 
           </div>
@@ -599,6 +351,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#常量池"><span class="nav-number">1.</span> <span class="nav-text">常量池</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#写在前面"><span class="nav-number">1.1.</span> <span class="nav-text">写在前面</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#问题引入"><span class="nav-number">1.2.</span> <span class="nav-text">问题引入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#常量池种类"><span class="nav-number">1.3.</span> <span class="nav-text">常量池种类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#字面量和字符串常量池"><span class="nav-number">1.4.</span> <span class="nav-text">字面量和字符串常量池</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#再看问题"><span class="nav-number">1.5.</span> <span class="nav-text">再看问题</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
