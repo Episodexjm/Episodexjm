@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://episodexjm.github.io').hostname,
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.7.1',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":true,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="进程与线程的应用（IPC问题）生产者和消费者问题问题描述系统中有一组生产者进程和一组消费者进程，生产者进程每次生产一个产品放入缓冲区，消费者进程每次从缓冲区中取出一个产品并使用。生产者和消费者共享一个初始为空，大小为n的缓冲区。  只有缓冲区没满时，生产者才能把产品放入缓冲区，否则必须等待。 只有缓冲区不空时，消费者才能从中取出产品，否则必须等待。 缓冲区时临界资源，必须互斥地访问。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IPC问题">
+<meta property="og:url" content="http://episodexjm.github.io/2020/04/11/IPC%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="进程与线程的应用（IPC问题）生产者和消费者问题问题描述系统中有一组生产者进程和一组消费者进程，生产者进程每次生产一个产品放入缓冲区，消费者进程每次从缓冲区中取出一个产品并使用。生产者和消费者共享一个初始为空，大小为n的缓冲区。  只有缓冲区没满时，生产者才能把产品放入缓冲区，否则必须等待。 只有缓冲区不空时，消费者才能从中取出产品，否则必须等待。 缓冲区时临界资源，必须互斥地访问。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-04-11T05:21:28.000Z">
+<meta property="article:modified_time" content="2020-04-11T05:22:57.508Z">
+<meta property="article:author" content="Episodexjm">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://episodexjm.github.io/2020/04/11/IPC%E9%97%AE%E9%A2%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>IPC问题 | Hexo</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-fw fa-calendar"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-fw fa-sitemap"></i>站点地图</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://episodexjm.github.io/2020/04/11/IPC%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Episodexjm">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          IPC问题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-04-11 13:21:28 / 修改时间：13:22:57" itemprop="dateCreated datePublished" datetime="2020-04-11T13:21:28+08:00">2020-04-11</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" itemprop="url" rel="index">
+                    <span itemprop="name">操作系统</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="进程与线程的应用（IPC问题）"><a href="#进程与线程的应用（IPC问题）" class="headerlink" title="进程与线程的应用（IPC问题）"></a>进程与线程的应用（IPC问题）</h3><h4 id="生产者和消费者问题"><a href="#生产者和消费者问题" class="headerlink" title="生产者和消费者问题"></a>生产者和消费者问题</h4><h5 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h5><p>系统中有一组生产者进程和一组消费者进程，生产者进程每次生产一个产品放入缓冲区，消费者进程每次从缓冲区中取出一个产品并使用。生产者和消费者共享一个初始为空，大小为n的缓冲区。</p>
+<ul>
+<li>只有缓冲区没满时，生产者才能把产品放入缓冲区，否则必须等待。</li>
+<li>只有缓冲区不空时，消费者才能从中取出产品，否则必须等待。</li>
+<li>缓冲区时临界资源，必须互斥地访问。<a id="more"></a>
+<h5 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h5>使用信号量机制（PV操作）：</li>
+</ul>
+<ol>
+<li>对于第一个条件和第二个条件时属于同步关系。缓冲区满时，生产者要等待消费者取走产品。缓冲区为空时，消费者要等待生产者放入产品。生产者每次消耗（P）一个空闲缓冲区，并生产（V）一个产品，消费者每次消耗（P）一个产品，并释放一个空闲缓冲区（V）。</li>
+<li>往缓冲区放入和取走需要满足互斥关系。可以通过设置初值为1的信号量实现。</li>
+</ol>
+<h5 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">semaphore mutex = <span class="number">1</span>;  <span class="comment">//互斥信号量</span></span><br><span class="line">semaphore empty = n;  <span class="comment">//同步信号量。空闲缓冲区的数量</span></span><br><span class="line">semaphore full = <span class="number">0</span>;   <span class="comment">//同步信号量。产品的数量，非空缓冲区的数量</span></span><br><span class="line">producer()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">      生成一个产品;</span><br><span class="line">      P(empty); <span class="comment">// 1. 消耗一个空闲缓冲区，P操作相当于减一，</span></span><br><span class="line">      P(mutex); <span class="comment">// 2. 互斥量的P操作</span></span><br><span class="line">      把产品放入缓冲区;</span><br><span class="line">      V(mutex);</span><br><span class="line">      V(full)   <span class="comment">//增加一个产品</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">consumer()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">      P(full);   <span class="comment">// 3. 消耗一个产品</span></span><br><span class="line">      P(mutex); <span class="comment">// 4. </span></span><br><span class="line">      从缓冲区取出一个产品;</span><br><span class="line">      V(mutex);</span><br><span class="line">      V(empty);  <span class="comment">//增加一个空闲缓冲区</span></span><br><span class="line">      使用产品;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>其中，1和2的操作不能互换，3和4的操作不能呼唤。如果此时缓冲区内已经放满了产品，则empty=0，full=n。如果生产者先执行2，那么mutex变为0，再执行1，由于没有空闲缓冲区，生产者阻塞。切换到消费者进程，先执行4的话，由于mutex为0，生产者没有释放临界资源的锁，因此消费者也被阻塞导致死锁。因此，<strong>实现互斥的P操作一定要在实现同步到P操作之后</strong>。</p>
+<h4 id="多生产者多消费者问题"><a href="#多生产者多消费者问题" class="headerlink" title="多生产者多消费者问题"></a>多生产者多消费者问题</h4><h5 id="问题描述-1"><a href="#问题描述-1" class="headerlink" title="问题描述"></a>问题描述</h5><p>桌上有一个盘子，每次只能向其中放入一个水果。爸爸专门向盘子中放苹果，妈妈专向盘子里放橘子，女儿吃苹果，儿子吃橘子。</p>
+<h5 id="分析-1"><a href="#分析-1" class="headerlink" title="分析"></a>分析</h5><p>互斥关系：对缓冲区(盘子)需要互斥地访问。<br>同步关系：</p>
+<ul>
+<li>父亲将苹果放入盘子，女儿才能吃苹果。</li>
+<li>母亲将橘子放入盘子，儿子才能吃橘子。</li>
+<li>只有当盘子为空时，父亲和母亲才能放入水果。<h5 id="实现-1"><a href="#实现-1" class="headerlink" title="实现"></a>实现</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">semaphore mutex = <span class="number">1</span>; <span class="comment">// 实现互斥访问盘子</span></span><br><span class="line">semaphore apple = <span class="number">0</span>; <span class="comment">// 盘子里有多少苹果</span></span><br><span class="line">semaphore orange = <span class="number">0</span>; <span class="comment">// 盘子里有多少橘子</span></span><br><span class="line">semaphore plate = <span class="number">1</span>; <span class="comment">// 盘子中还可以放多少水果</span></span><br><span class="line">dad() &#123;                           mom() &#123;   </span><br><span class="line">  <span class="keyword">while</span>(<span class="number">1</span>) &#123;                        <span class="keyword">while</span>(<span class="number">1</span>) &#123;</span><br><span class="line">    准备一个苹果                        准备一个橘子;</span><br><span class="line">    P(plate);                          P(plate);</span><br><span class="line">    P(mutex);                          P(mutex);</span><br><span class="line">    把苹果放入盘子;                     把橘子放入盘子;</span><br><span class="line">    V(mutex);                          V(mutex);</span><br><span class="line">    V(apple);                          V(orange);</span><br><span class="line">  &#125;                                 &#125;</span><br><span class="line">&#125;                                 &#125;</span><br><span class="line">daughter() &#123;                      son() &#123;   </span><br><span class="line">  <span class="keyword">while</span>(<span class="number">1</span>) &#123;                        <span class="keyword">while</span>(<span class="number">1</span>) &#123;</span><br><span class="line">    准备一个苹果                        准备一个橘子;</span><br><span class="line">    P(apple);                          P(orange);</span><br><span class="line">    P(mutex);                          P(mutex);</span><br><span class="line">    把苹果放入盘子;                     把橘子放入盘子;</span><br><span class="line">    V(mutex);                          V(mutex);</span><br><span class="line">    V(plate);                          V(plate);</span><br><span class="line">  &#125;                                 &#125;</span><br><span class="line">&#125;                                 &#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="吸烟者问题"><a href="#吸烟者问题" class="headerlink" title="吸烟者问题"></a>吸烟者问题</h4><h5 id="问题描述-2"><a href="#问题描述-2" class="headerlink" title="问题描述"></a>问题描述</h5><p>假设一个系统有三个吸烟者进程和一个供应者进程。每个抽烟者不停地卷烟并抽掉它，但抽烟者需要三种材料：烟草，纸和胶水。供应者金册灰姑娘无限地提供三种材料，供应者每次将两种材料放在桌子上，拥有剩下地材料的抽烟者卷一根烟并抽调它，并给供应者进程一个信号告诉完成了，供应者就会将另外两种材料放在桌上。</p>
+<h5 id="分析-2"><a href="#分析-2" class="headerlink" title="分析"></a>分析</h5><p>该问题本质上是“可生产多种产品的单生产者—多消费者”问题。可以假设有三种组合：</p>
+<ul>
+<li>组合一：纸+胶水</li>
+<li>组合二：烟草+胶水</li>
+<li>组合三：纸+烟草</li>
+</ul>
+<p>同步关系：</p>
+<ul>
+<li>桌子上有组合一，然后抽烟者一才能取走</li>
+<li>桌子上有组合二，然后抽烟者二才能取走</li>
+<li>桌子上有组合三，然后抽烟者三才能取走</li>
+</ul>
+<h5 id="实现-2"><a href="#实现-2" class="headerlink" title="实现"></a>实现</h5><p>并不需要，本题中的缓冲区大小为1，在任何时刻四个同步信号量中最多只有一个是1，在任何时刻只有一个进程的P操作不会被阻塞，并顺利地进入临界区。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">semaphore offer1 = <span class="number">0</span>; <span class="comment">// 桌上组合一的数量</span></span><br><span class="line">semaphore offer2 = <span class="number">0</span>; <span class="comment">// 桌上组合二的数量</span></span><br><span class="line">semaphore offer3 = <span class="number">0</span>; <span class="comment">// 桌上组合三的数量</span></span><br><span class="line">semaphore finish = <span class="number">0</span>; <span class="comment">// 抽烟是否完成</span></span><br><span class="line"><span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">provider()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        <span class="keyword">if</span>(i == <span class="number">0</span>)&#123;</span><br><span class="line">           将组合一放桌上</span><br><span class="line">           V(offer1);</span><br><span class="line">        &#125;<span class="keyword">else</span> <span class="keyword">if</span>(i == <span class="number">1</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            将组合二放桌上</span><br><span class="line">            V(offer2);</span><br><span class="line">        &#125;<span class="keyword">else</span> id(i == <span class="number">2</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            将组合三放桌上</span><br><span class="line">            V(offer3);</span><br><span class="line">        &#125;</span><br><span class="line">        i = (i+<span class="number">1</span>)%<span class="number">3</span>；</span><br><span class="line">        P(finish);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">smoker1 ()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        P(offer1)</span><br><span class="line">        从桌上拿走组合一;</span><br><span class="line">        卷烟；</span><br><span class="line">        抽掉；</span><br><span class="line">        V(finish);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">smoker2 ()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        P(offer2)</span><br><span class="line">        从桌上拿走组合二;</span><br><span class="line">        卷烟；</span><br><span class="line">        抽掉；</span><br><span class="line">        V(finish);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">smoker3 ()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        P(offer3)</span><br><span class="line">        从桌上拿走组合三;</span><br><span class="line">        卷烟；</span><br><span class="line">        抽掉；</span><br><span class="line">        V(finish);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="读者写者问题"><a href="#读者写者问题" class="headerlink" title="读者写者问题"></a>读者写者问题</h4><h5 id="问题描述-3"><a href="#问题描述-3" class="headerlink" title="问题描述"></a>问题描述</h5><p>有读者和写者两组并发进程，共享一个文件，当两个或两个以上的读进程同时访问共享数据时不会产生副作用，但若某个写进程和和其他进程（读或者写进程）同时访问共享数据可能导致数据不一致错误。因此要求：</p>
+<ol>
+<li>允许多个读者同时对文件进行操作</li>
+<li>只允许一个写者往文件中写信息</li>
+<li>任一写者在完成写操作之前不允许其他读者或者写者工作</li>
+<li>写者执行写操作前，应让已有的读者和写者退出。</li>
+</ol>
+<h5 id="分析-3"><a href="#分析-3" class="headerlink" title="分析"></a>分析</h5><p>互斥关系：写进程与写进程，写进程与读进程。<br>写进程与任何进程都互斥，设置一个互斥信号量rw，在写进程访问共享文件前后执行PV操作。读者进程和写者进程也要互斥，因此访问共享文件前后也需要对rw执行PV操作。如果所有读者进程在访问共享文件之前都执行P(rw)操作，那么会导致各个读进程之间无法同时访问文件，因此可以设置一个整数型变量count记录当前几个读进程在访问文件，而读进程与写进程必须互斥访问，可以让第一个访问文件的读进程”加锁”，最后一个进程访问完”解锁”。</p>
+<h5 id="实现-3"><a href="#实现-3" class="headerlink" title="实现"></a>实现</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">semaphore rw = <span class="number">1</span>;   <span class="comment">//实现对文件的互斥访问</span></span><br><span class="line"><span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line">semaphore mutex = <span class="number">1</span>;<span class="comment">//实现对count变量的互斥访问, 设置该信号量为了保证if和count的操作的原子性</span></span><br><span class="line">                    <span class="comment">//从而避免了在执行if后进程切换导致读者进程无法共同访问。</span></span><br><span class="line">writer()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        P(rw); <span class="comment">//写之前“加锁”</span></span><br><span class="line">        写文件</span><br><span class="line">        V(rw); <span class="comment">//写之后“解锁”</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">reader ()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        P(mutex);     <span class="comment">//各读进程互斥访问count</span></span><br><span class="line">        <span class="keyword">if</span>(count==<span class="number">0</span>)  <span class="comment">//第一个读进程负责“加锁”</span></span><br><span class="line">        &#123;</span><br><span class="line">            P(rw);</span><br><span class="line">        &#125;</span><br><span class="line">        count++;      <span class="comment">//访问文件的进程数+1</span></span><br><span class="line">        V(mutex);</span><br><span class="line">        读文件</span><br><span class="line">        P(mutex);     <span class="comment">//各读进程互斥访问count</span></span><br><span class="line">        count--;      <span class="comment">//访问文件的进程数-1</span></span><br><span class="line">        <span class="keyword">if</span>(count==<span class="number">0</span>)  <span class="comment">//最后一个读进程负责“解锁”</span></span><br><span class="line">        &#123;</span><br><span class="line">            V(rw);</span><br><span class="line">        &#125;</span><br><span class="line">        V(mutex);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>只要有源源不断的读进程存在，写进程就要一直阻塞等待，可能会造成“饿死”，在上述的算法中，读进程是优先的。可以新加入一个锁变量w，用于实现“写优先”。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">semaphore rw = <span class="number">1</span>;   <span class="comment">//实现对文件的互斥访问</span></span><br><span class="line"><span class="keyword">int</span> count = <span class="number">0</span>;</span><br><span class="line">semaphore mutex = <span class="number">1</span>;<span class="comment">//实现对count变量的互斥访问</span></span><br><span class="line">semaphore w = <span class="number">1</span>;</span><br><span class="line">writer()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">      P(w);</span><br><span class="line">      P(rw); </span><br><span class="line">      写文件</span><br><span class="line">      V(rw);</span><br><span class="line">      V(w);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">reader ()&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">      P(w);</span><br><span class="line">      P(mutex);     </span><br><span class="line">      <span class="keyword">if</span>(count==<span class="number">0</span>)  </span><br><span class="line">          P(rw);</span><br><span class="line">      count++;      </span><br><span class="line">      V(mutex);</span><br><span class="line">      V(w);</span><br><span class="line">      读文件</span><br><span class="line">      P(mutex);     </span><br><span class="line">      count--;     </span><br><span class="line">      <span class="keyword">if</span>(count==<span class="number">0</span>)  </span><br><span class="line">          V(rw);</span><br><span class="line">      V(mutex);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>并发执行时候一般会出现下面几种情况：</p>
+<ul>
+<li>读者1-&gt;读者2</li>
+<li>写者1-&gt;写者2</li>
+<li>写者1-&gt;读者1</li>
+<li>读者1-&gt;写者1-&gt;读者2</li>
+<li>写者1-&gt;读者1-&gt;写者2</li>
+</ul>
+<p>这里我们来分析一下读者1-&gt;写者1-&gt;读者2这种情况。第一个读者1在进行到读文件操作的时候，有一个写者1操作，由于第一个读者1执行了V(w)，所以写者1不会阻塞在P(w)，但由于第一个读者1执行了P(rw)但没有执行V(rw)，写者1将会被阻塞在P(rw)上，这时候再有一个读者2，由于前面的写者1进程执行了P(w)但没有执行V(w)，所以读者2将会被阻塞在P(w)上，这样写者1和读者2都将阻塞，只有当读者1结束时执行V(rw)，此时写者1才能够继续执行直到执行V(w)，读者2也将能够执行下去。该算法是一种先到先服务的算法，对读写操作相对公平。</p>
+<h4 id="哲学家进餐问题"><a href="#哲学家进餐问题" class="headerlink" title="哲学家进餐问题"></a>哲学家进餐问题</h4><h5 id="问题描述-4"><a href="#问题描述-4" class="headerlink" title="问题描述"></a>问题描述</h5><p>一张圆桌坐着5名哲学家，每两个哲学家左右两边各一根筷子，同时使用才可以吃饭。否则等待。</p>
+<h5 id="分析-4"><a href="#分析-4" class="headerlink" title="分析"></a>分析</h5><p>互斥关系：每个哲学家进程需要同时持有两个临界资源才能吃饭。定义互斥信号量数组<code>chopstick[5]={1,1,1,1,1}</code>对哲学家进行编号0-4，左边的筷子编号和哲学家编号相同，右边的筷子编号为(i+1)%5</p>
+<h5 id="实现-4"><a href="#实现-4" class="headerlink" title="实现"></a>实现</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">semaphore chopstick[<span class="number">5</span>] = &#123;<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>&#125;;</span><br><span class="line"><span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">/*当哲学家饥饿时，总是先拿左边的筷子，再拿右边的筷子*/</span></span><br><span class="line">	P(chopstick[i]);</span><br><span class="line">	P(chopstick[(i+<span class="number">1</span>)%<span class="number">5</span>]);</span><br><span class="line"> </span><br><span class="line">	<span class="comment">// 吃饭</span></span><br><span class="line"> </span><br><span class="line">	<span class="comment">/*当哲学家进餐完成后，总是先放下左边的筷子，再放下右边的筷子*/</span></span><br><span class="line">	V(chopstick[i]);</span><br><span class="line">	V(chopstick[(i+<span class="number">1</span>)%<span class="number">5</span>]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>假如五位哲学家同时饥饿而都拿起的左边的筷子，就会使五个信号量chopstick都为0，当他们试图去拿右手边的筷子时，都将无筷子而陷入无限期的等待。为了解决死锁问题，可以采取下面的几种方案：</p>
+<ol>
+<li><p>至多只允许四个哲学家同时进餐，以保证至少有一个哲学家能够进餐，最终总会释放出他所使用过的两支筷子，从而可使更多的哲学家进餐。定义信号量count，只允许4个哲学家同时进餐，这样就能保证至少有一个哲学家可以就餐。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">semaphore chopstick[<span class="number">5</span>]=&#123;<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>&#125;;</span><br><span class="line">semaphore count=<span class="number">4</span>; <span class="comment">// 设置一个count，最多有四个哲学家可以进来</span></span><br><span class="line">philosopher(<span class="keyword">int</span> i)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		P(count); <span class="comment">//请求进入房间进餐 当count为0时 不能允许哲学家再进来了</span></span><br><span class="line">		P(chopstick[i]); <span class="comment">//请求左手边的筷子</span></span><br><span class="line">		P(chopstick[(i+<span class="number">1</span>)%<span class="number">5</span>]); <span class="comment">//请求右手边的筷子</span></span><br><span class="line">		eat();</span><br><span class="line">		V(chopstick[i]); <span class="comment">//释放左手边的筷子</span></span><br><span class="line">		V(chopstick[(i+<span class="number">1</span>)%<span class="number">5</span>]); <span class="comment">//释放右手边的筷子</span></span><br><span class="line">		V(count); <span class="comment">//退出房间释放信号量</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>仅当哲学家的左右两支筷子都可用时，才允许他拿起筷子进餐。可以利用信号量的保护机制实现。利用信号量的保护机制实现的思想是通过记录型信号量mutex对取左侧和右侧筷子的操作进行保护，使之成为一个原子操作，这样可以防止死锁的出现。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">semaphore chopstick[<span class="number">5</span>]=&#123;<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>&#125;;</span><br><span class="line">philosopher(<span class="keyword">int</span> i)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="comment">/* 这个过程中可能只能由一个人在吃饭 */</span></span><br><span class="line">		P(mutex); <span class="comment">// 保护信号量</span></span><br><span class="line">		P(chopstick[(i+<span class="number">1</span>)%<span class="number">5</span>]); <span class="comment">// 请求右手边的筷子</span></span><br><span class="line">		P(chopstick[i]); <span class="comment">// 请求左手边的筷子</span></span><br><span class="line">		V(mutex); <span class="comment">// 释放保护信号量</span></span><br><span class="line">		eat();</span><br><span class="line">		V(chopstick[(i+<span class="number">1</span>)%<span class="number">5</span>]); <span class="comment">// 释放右手边的筷子</span></span><br><span class="line">		V(chopstick[i]); <span class="comment">// 释放左手边的筷子</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>规定奇数号的哲学家先拿起他左边的筷子，然后再去拿他右边的筷子；而偶数号的哲学家则先拿起他右边的筷子，然后再去拿他左边的筷子。按此规定，将是1、2号哲学家竞争1号筷子，3、4号哲学家竞争3号筷子。即五个哲学家都竞争奇数号筷子，获得后，再去竞争偶数号筷子，最后总会有一个哲学家能获得两支筷子而进餐。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">semaphore chopstick[<span class="number">5</span>]=&#123;<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">1</span>&#125;;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">philosopher</span><span class="params">(<span class="keyword">int</span> i)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		think();</span><br><span class="line">		<span class="keyword">if</span>(i%<span class="number">2</span> == <span class="number">0</span>) <span class="comment">//偶数哲学家，先右后左。</span></span><br><span class="line">		&#123;</span><br><span class="line">			P (chopstick[(i + <span class="number">1</span>)%<span class="number">5</span>]) ;</span><br><span class="line">			P (chopstick[i]) ;</span><br><span class="line">			eat();</span><br><span class="line">			V (chopstick[(i + <span class="number">1</span>)%<span class="number">5</span>]) ;</span><br><span class="line">			V (chopstick[i]) ;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> <span class="comment">//奇数哲学家，先左后右。</span></span><br><span class="line">		&#123;</span><br><span class="line">			P (chopstick[i]) ;</span><br><span class="line">			P (chopstick[(i + <span class="number">1</span>)%<span class="number">5</span>]) ;</span><br><span class="line">			eat();</span><br><span class="line">			V (chopstick[i]) ;</span><br><span class="line">			V (chopstick[(i + <span class="number">1</span>)%<span class="number">5</span>]) ;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/04/07/%E8%BF%9B%E7%A8%8B%E4%B8%8E%E7%BA%BF%E7%A8%8B/" rel="prev" title="进程与线程">
+      <i class="fa fa-chevron-left"></i> 进程与线程
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#进程与线程的应用（IPC问题）"><span class="nav-number">1.</span> <span class="nav-text">进程与线程的应用（IPC问题）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#生产者和消费者问题"><span class="nav-number">1.1.</span> <span class="nav-text">生产者和消费者问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#问题描述"><span class="nav-number">1.1.1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#分析"><span class="nav-number">1.1.2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实现"><span class="nav-number">1.1.3.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#多生产者多消费者问题"><span class="nav-number">1.2.</span> <span class="nav-text">多生产者多消费者问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#问题描述-1"><span class="nav-number">1.2.1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#分析-1"><span class="nav-number">1.2.2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实现-1"><span class="nav-number">1.2.3.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#吸烟者问题"><span class="nav-number">1.3.</span> <span class="nav-text">吸烟者问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#问题描述-2"><span class="nav-number">1.3.1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#分析-2"><span class="nav-number">1.3.2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实现-2"><span class="nav-number">1.3.3.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#读者写者问题"><span class="nav-number">1.4.</span> <span class="nav-text">读者写者问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#问题描述-3"><span class="nav-number">1.4.1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#分析-3"><span class="nav-number">1.4.2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实现-3"><span class="nav-number">1.4.3.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#哲学家进餐问题"><span class="nav-number">1.5.</span> <span class="nav-text">哲学家进餐问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#问题描述-4"><span class="nav-number">1.5.1.</span> <span class="nav-text">问题描述</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#分析-4"><span class="nav-number">1.5.2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实现-4"><span class="nav-number">1.5.3.</span> <span class="nav-text">实现</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Episodexjm</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Episodexjm</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.7.1
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
