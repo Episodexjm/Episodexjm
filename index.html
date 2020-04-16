@@ -215,7 +215,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2020-04-16 20:41:45 / 修改时间：20:47:49" itemprop="dateCreated datePublished" datetime="2020-04-16T20:41:45+08:00">2020-04-16</time>
+              <time title="创建时间：2020-04-16 20:41:45 / 修改时间：20:50:47" itemprop="dateCreated datePublished" datetime="2020-04-16T20:41:45+08:00">2020-04-16</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -240,7 +240,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h3 id="DirectBuffer"><a href="#DirectBuffer" class="headerlink" title="DirectBuffer"></a>DirectBuffer</h3><p>对于普通的ByteBuffer，无论是对象的本身分配还是底层数组对象的分配都是在java堆当中，被JVM所管理着。在执行GC的时候，JVM实际上会做一些整理内存（标记整理）的工作，也就说这个对象在内存中的实际地址是会发生变化的。有些时候，ByteBuffer里都是大量的字节，这些字节在JVM GC整理内存时就显得很笨重，把它们在内存中拷来拷去显然不是一个好主意。为了脱离JVM的管理，可以将底层数组分配直接拿到堆外内存，由操作系统来管理。如何进行分配内存和垃圾回收的呢？<br><img style="display: block; margin: 0 auto;" width="600" height="400" src="/2020/04/16/DirectBuffer/1.png">  </p>
+          <h3 id="DirectBuffer"><a href="#DirectBuffer" class="headerlink" title="DirectBuffer"></a>DirectBuffer</h3><p>对于普通的ByteBuffer，无论是对象的本身分配还是底层数组对象的分配都是在java堆当中，被JVM所管理着。在执行GC的时候，JVM实际上会做一些整理内存（标记整理）的工作，也就说这个对象在内存中的实际地址是会发生变化的。有些时候，ByteBuffer里都是大量的字节，这些字节在JVM GC整理内存时就显得很笨重，把它们在内存中拷来拷去显然不是一个好主意。为了脱离JVM的管理，可以将底层数组分配直接拿到堆外内存，由操作系统来管理。如何进行分配内存和垃圾回收的呢？<br><img style="display: block; margin: 0 auto;" width="600" height="300" src="/2020/04/16/DirectBuffer/1.png">  </p>
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2020/04/16/DirectBuffer/#more" rel="contents">
