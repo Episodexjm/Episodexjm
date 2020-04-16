@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://episodexjm.github.io').hostname,
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.7.1',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":true,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="DirectBuffer对于普通的ByteBuffer，无论是对象的本身分配还是底层数组对象的分配都是在java堆当中，被JVM所管理着。在执行GC的时候，JVM实际上会做一些整理内存（标记整理）的工作，也就说这个对象在内存中的实际地址是会发生变化的。有些时候，ByteBuffer里都是大量的字节，这些字节在JVM GC整理内存时就显得很笨重，把它们在内存中拷来拷去显然不是一个好主意。为了脱离JV">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DirectBuffer">
+<meta property="og:url" content="http://episodexjm.github.io/2020/04/16/DirectBuffer/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="DirectBuffer对于普通的ByteBuffer，无论是对象的本身分配还是底层数组对象的分配都是在java堆当中，被JVM所管理着。在执行GC的时候，JVM实际上会做一些整理内存（标记整理）的工作，也就说这个对象在内存中的实际地址是会发生变化的。有些时候，ByteBuffer里都是大量的字节，这些字节在JVM GC整理内存时就显得很笨重，把它们在内存中拷来拷去显然不是一个好主意。为了脱离JV">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://episodexjm.github.io/2020/04/16/DirectBuffer/1.png">
+<meta property="article:published_time" content="2020-04-16T12:41:45.000Z">
+<meta property="article:modified_time" content="2020-04-16T12:47:49.395Z">
+<meta property="article:author" content="Episodexjm">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://episodexjm.github.io/2020/04/16/DirectBuffer/1.png">
+
+<link rel="canonical" href="http://episodexjm.github.io/2020/04/16/DirectBuffer/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>DirectBuffer | Hexo</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <!-- hexo-inject:begin --><!-- hexo-inject:end --><div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-fw fa-th"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-fw fa-calendar"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-fw fa-sitemap"></i>站点地图</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://episodexjm.github.io/2020/04/16/DirectBuffer/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Episodexjm">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DirectBuffer
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-04-16 20:41:45 / 修改时间：20:47:49" itemprop="dateCreated datePublished" datetime="2020-04-16T20:41:45+08:00">2020-04-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/NIO/" itemprop="url" rel="index">
+                    <span itemprop="name">NIO</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="DirectBuffer"><a href="#DirectBuffer" class="headerlink" title="DirectBuffer"></a>DirectBuffer</h3><p>对于普通的ByteBuffer，无论是对象的本身分配还是底层数组对象的分配都是在java堆当中，被JVM所管理着。在执行GC的时候，JVM实际上会做一些整理内存（标记整理）的工作，也就说这个对象在内存中的实际地址是会发生变化的。有些时候，ByteBuffer里都是大量的字节，这些字节在JVM GC整理内存时就显得很笨重，把它们在内存中拷来拷去显然不是一个好主意。为了脱离JVM的管理，可以将底层数组分配直接拿到堆外内存，由操作系统来管理。如何进行分配内存和垃圾回收的呢？<br><img style="display: block; margin: 0 auto;" width="600" height="400" src="/2020/04/16/DirectBuffer/1.png">  </p>
+<a id="more"></a>
+<h4 id="堆外内存申请"><a href="#堆外内存申请" class="headerlink" title="堆外内存申请"></a>堆外内存申请</h4><p>当然，这里使用的是<code>DirectBuffer</code>的实现类<code>DirectByteBuffer</code></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">DirectByteBuffer(<span class="keyword">int</span> cap) &#123;                   <span class="comment">// package-private</span></span><br><span class="line">    <span class="comment">// 初始化Buffer的四个核心属性</span></span><br><span class="line">    <span class="keyword">super</span>(-<span class="number">1</span>, <span class="number">0</span>, cap, cap);</span><br><span class="line">    <span class="comment">// 判断是否需要页面对齐，通过参数-XX:+PageAlignDirectMemory控制，默认为false</span></span><br><span class="line">    <span class="keyword">boolean</span> pa = VM.isDirectMemoryPageAligned();</span><br><span class="line">    <span class="keyword">int</span> ps = Bits.pageSize();</span><br><span class="line">    <span class="comment">// 确保有足够内存</span></span><br><span class="line">    <span class="keyword">long</span> size = Math.max(<span class="number">1L</span>, (<span class="keyword">long</span>)cap + (pa ? ps : <span class="number">0</span>));</span><br><span class="line">    Bits.reserveMemory(size, cap);</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">long</span> base = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 调用unsafe方法分配内存</span></span><br><span class="line">        base = unsafe.allocateMemory(size);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (OutOfMemoryError x) &#123;</span><br><span class="line">        <span class="comment">// 分配失败，释放内存</span></span><br><span class="line">        Bits.unreserveMemory(size, cap);</span><br><span class="line">        <span class="keyword">throw</span> x;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 初始化内存空间为0</span></span><br><span class="line">    unsafe.setMemory(base, size, (<span class="keyword">byte</span>) <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 设置内存起始地址</span></span><br><span class="line">    <span class="keyword">if</span> (pa &amp;&amp; (base % ps != <span class="number">0</span>)) &#123;</span><br><span class="line">        address = base + ps - (base &amp; (ps - <span class="number">1</span>));</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        address = base;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 使用Cleaner机制注册内存回收处理函数</span></span><br><span class="line">    cleaner = Cleaner.create(<span class="keyword">this</span>, <span class="keyword">new</span> Deallocator(base, size, cap));</span><br><span class="line">    att = <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在这个构造函数中，首先通过<code>Bits.reserveMemory(size, cap)</code>来判断是否有足够的空间（堆外）用于申请。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 该方法主要用于判断申请的堆外内存是否超过了用例指定的最大值</span></span><br><span class="line"><span class="comment">// 如果还有足够空间可以申请，则更新对应的变量</span></span><br><span class="line"><span class="comment">// size：根据是否按页对齐，得到的真实需要申请的内存大小</span></span><br><span class="line"><span class="comment">// cap：用户指定需要的内存大小(&lt;=size)</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">reserveMemory</span><span class="params">(<span class="keyword">long</span> size, <span class="keyword">int</span> cap)</span> </span>&#123;</span><br><span class="line">   <span class="comment">// 获取最大可以申请的堆外内存大小，默认值是64MB</span></span><br><span class="line">   <span class="keyword">if</span> (!memoryLimitSet &amp;&amp; VM.isBooted()) &#123;</span><br><span class="line">      maxMemory = VM.maxDirectMemory();</span><br><span class="line">      memoryLimitSet = <span class="keyword">true</span>;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 第一次通过调用tryReserveMemory来判断是否有足够空间用于分配</span></span><br><span class="line">   <span class="keyword">if</span> (tryReserveMemory(size, cap)) &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="keyword">final</span> JavaLangRefAccess jlra = SharedSecrets.getJavaLangRefAccess();</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 第二次使用tryHandlePendingReference来尝试清理堆外内存，实际上调用的是Cleaner的clean方法</span></span><br><span class="line">   <span class="comment">// 清理完内存之后再尝试分配内存。</span></span><br><span class="line">   <span class="keyword">while</span> (jlra.tryHandlePendingReference()) &#123;</span><br><span class="line">      <span class="keyword">if</span> (tryReserveMemory(size, cap)) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 第三次调用System.gc()来触发FullGC</span></span><br><span class="line">   System.gc();</span><br><span class="line"></span><br><span class="line">   <span class="comment">// GC完之后再进行内存分配，失败的话就会进行sleep，然后再进行尝试。每次sleep的时间是逐步增加的</span></span><br><span class="line">   <span class="comment">// 规律是1, 2, 4, 8, 16, 32, 64, 128, 256 (total 511 ms ~ 0.5 s)</span></span><br><span class="line">   <span class="comment">// 如果最终还没有可分配的内存，那么就会抛出OOM异常。</span></span><br><span class="line">   <span class="keyword">boolean</span> interrupted = <span class="keyword">false</span>;</span><br><span class="line">   <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">long</span> sleepTime = <span class="number">1</span>;</span><br><span class="line">      <span class="keyword">int</span> sleeps = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (tryReserveMemory(size, cap)) &#123;</span><br><span class="line">               <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (sleeps &gt;= MAX_SLEEPS) &#123;</span><br><span class="line">               <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (!jlra.tryHandlePendingReference()) &#123;</span><br><span class="line">               <span class="keyword">try</span> &#123;</span><br><span class="line">                  Thread.sleep(sleepTime);</span><br><span class="line">                  sleepTime &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">                  sleeps++;</span><br><span class="line">               &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">                  interrupted = <span class="keyword">true</span>;</span><br><span class="line">               &#125;</span><br><span class="line">            &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// no luck</span></span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> OutOfMemoryError(<span class="string">"Direct buffer memory"</span>);</span><br><span class="line"></span><br><span class="line">   &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">      <span class="keyword">if</span> (interrupted) &#123;</span><br><span class="line">            <span class="comment">// don't swallow interrupts</span></span><br><span class="line">            Thread.currentThread().interrupt();</span><br><span class="line">      &#125;</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="堆外内存回收"><a href="#堆外内存回收" class="headerlink" title="堆外内存回收"></a>堆外内存回收</h4><p>在创建直接内存时，通过以下语句给DirectByteBuffer分配了清理对象：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cleaner = Cleaner.create(<span class="keyword">this</span>, <span class="keyword">new</span> Deallocator(base, size, cap));</span><br></pre></td></tr></table></figure>
+
+<p>对于Deallocator对象，创建该对象时候，把base/size/capacity作为构造器参数，送过去，因此Deallocator就指向了这块直接内存，构造方法源代码如下，注意base和address的关系，address和base实际上就保存了对堆外内存的引用：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="title">Deallocator</span><span class="params">(<span class="keyword">long</span> address, <span class="keyword">long</span> size, <span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">assert</span> (address != <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">this</span>.address = address;</span><br><span class="line">    <span class="keyword">this</span>.size = size;</span><br><span class="line">    <span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Deallocator实现了Runnable，通过执行其run方法释放直接内存，其run方法实现如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (address == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// Paranoia</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    unsafe.freeMemory(address);	</span><br><span class="line">    address = <span class="number">0</span>;</span><br><span class="line">    Bits.unreserveMemory(size, capacity);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先，通过调用unsafe.freeMemory(address)释放内存，该方法被声明为native，最终会执行系统调用方法free，释放由之前malloc分配的内存。然后调用<code>Bits.unreserveMemory(size, capacity)</code>，从使用量控制累加器上减去当前直接内存的大小。那么Cleaner又是如何调用Deallocator对象从而执行run方法的呢，Cleaner对象的创建过程如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> Cleaner next = <span class="keyword">null</span>;  <span class="comment">// 多个cleaner对象是以双向链表的方式保存的</span></span><br><span class="line"><span class="keyword">private</span> Cleaner prev = <span class="keyword">null</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Runnable thunk;	<span class="comment">// Deallocator对象会被Cleaner对象持有</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 1 先调用静态的创建方法</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Cleaner <span class="title">create</span><span class="params">(Object ob, Runnable thunk)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (thunk == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">return</span> add(<span class="keyword">new</span> Cleaner(ob, thunk));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2 调用构造器，这时把其引用的DirectByteBuffer对象referent传给其父类，即虚引用类PhantomReference</span></span><br><span class="line"><span class="comment">// dummyQueue是ReferenceQueue 类型</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="title">Cleaner</span><span class="params">(Object referent, Runnable thunk)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">super</span>(referent, dummyQueue);</span><br><span class="line">    <span class="keyword">this</span>.thunk = thunk;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3 将当前cleaner对象加入到cleaner链表的表头</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">synchronized</span> Cleaner <span class="title">add</span><span class="params">(Cleaner cl)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (first != <span class="keyword">null</span>) &#123;</span><br><span class="line">        cl.next = first;</span><br><span class="line">        first.prev = cl;</span><br><span class="line">    &#125;</span><br><span class="line">    first = cl;</span><br><span class="line">    <span class="keyword">return</span> cl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当清除直接内存时，会调用Cleaner对象的clean()方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">clean</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(remove(<span class="keyword">this</span>)) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">this</span>.thunk.run();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (<span class="keyword">final</span> Throwable var2) &#123;</span><br><span class="line">            <span class="comment">// do sth</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>比较简单，直接调用this.thunk.run()方法释放内存，从上文分析可知thunk是个Deallocator对象，即调用了Deallocator对象的run()方法释放了内存。<br>Cleaner对象是个虚引用，当一个虚引用所引用的对象被垃圾回收器回收掉时，这个需引用将会被加入到pending链表中。另外有一个引用处理线程来处理pending列表里面的引用对象。如果这个引用对象是个Cleaner，则直接调用其clean()方法。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PhantomReference</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">Reference</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">PhantomReference</span><span class="params">(T referent, ReferenceQueue&lt;? <span class="keyword">super</span> T&gt; q)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(referent, q);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可见PhantomReference继承了Reference类，来看Reference类，其主要属性：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> T referent;    </span><br><span class="line"><span class="keyword">volatile</span> ReferenceQueue&lt;? <span class="keyword">super</span> T&gt; queue;</span><br><span class="line"><span class="keyword">transient</span> <span class="keyword">private</span> Reference&lt;T&gt; discovered; </span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> Reference&lt;Object&gt; pending = <span class="keyword">null</span>;</span><br></pre></td></tr></table></figure>
+
+<p>被引用对象referent和引用队列queue由构造器传入，在创建Cleaner时由子类传上来。当其引用的对象referent被垃圾回收器回收掉时，该引用将会被加入pending单向链表。pending是static的，所以可以认为它是一个全局的数据结构。链表里的每个元素，通过discovered类变量指向到链表中的下一个元素。</p>
+<p>而pending链表中的引用实际上是在ReferenceHandler类中处理的，ReferenceHandler是Reference类的静态内部类，继承自Thread类，覆盖了线程类的run方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"> <span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">ReferenceHandler</span> <span class="keyword">extends</span> <span class="title">Thread</span> </span>&#123;</span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">ensureClassInitialized</span><span class="params">(Class&lt;?&gt; clazz)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">            Class.forName(clazz.getName(), <span class="keyword">true</span>, clazz.getClassLoader());</span><br><span class="line">      &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> (Error) <span class="keyword">new</span> NoClassDefFoundError(e.getMessage()).initCause(e);</span><br><span class="line">      &#125;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="keyword">static</span> &#123;</span><br><span class="line">      <span class="comment">// pre-load and initialize InterruptedException and Cleaner classes</span></span><br><span class="line">      <span class="comment">// so that we don't get into trouble later in the run loop if there's</span></span><br><span class="line">      <span class="comment">// memory shortage while loading/initializing them lazily.</span></span><br><span class="line">      ensureClassInitialized(InterruptedException<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">      ensureClassInitialized(Cleaner<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   ReferenceHandler(ThreadGroup g, String name) &#123;</span><br><span class="line">      <span class="keyword">super</span>(g, name);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">            tryHandlePending(<span class="keyword">true</span>);</span><br><span class="line">      &#125;</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">tryHandlePending</span><span class="params">(<span class="keyword">boolean</span> waitForNotify)</span> </span>&#123;</span><br><span class="line">   Reference&lt;Object&gt; r;</span><br><span class="line">   Cleaner c;</span><br><span class="line">   <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="keyword">synchronized</span> (lock) &#123;</span><br><span class="line">            <span class="keyword">if</span> (pending != <span class="keyword">null</span>) &#123;</span><br><span class="line">               r = pending;</span><br><span class="line">               <span class="comment">// 判断从pending中取出的引用是否是Cleaner类型</span></span><br><span class="line">               c = r <span class="keyword">instanceof</span> Cleaner ? (Cleaner) r : <span class="keyword">null</span>;</span><br><span class="line">               pending = r.discovered;</span><br><span class="line">               <span class="comment">// 将r取出来使得它的下一个引用为null</span></span><br><span class="line">               r.discovered = <span class="keyword">null</span>;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">               <span class="comment">// 如果pending链表已经没有引用，则调用lock.wait()阻塞等待。</span></span><br><span class="line">               <span class="keyword">if</span> (waitForNotify) &#123;</span><br><span class="line">                  lock.wait();</span><br><span class="line">               &#125;</span><br><span class="line">               <span class="keyword">return</span> waitForNotify;</span><br><span class="line">            &#125;</span><br><span class="line">      &#125;</span><br><span class="line">   &#125; <span class="keyword">catch</span> (OutOfMemoryError x) &#123;</span><br><span class="line">      <span class="comment">// do sth</span></span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 如果该引用r是Cleaner实例，调动其clean()方法。Cleaner的clean()方法就是在这里被调用的。</span></span><br><span class="line">   <span class="keyword">if</span> (c != <span class="keyword">null</span>) &#123;</span><br><span class="line">      c.clean();</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   ReferenceQueue&lt;? <span class="keyword">super</span> Object&gt; q = r.queue;</span><br><span class="line">   <span class="keyword">if</span> (q != ReferenceQueue.NULL) q.enqueue(r);</span><br><span class="line">   <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/04/11/IPC%E9%97%AE%E9%A2%98/" rel="prev" title="IPC问题">
+      <i class="fa fa-chevron-left"></i> IPC问题
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#DirectBuffer"><span class="nav-number">1.</span> <span class="nav-text">DirectBuffer</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#堆外内存申请"><span class="nav-number">1.1.</span> <span class="nav-text">堆外内存申请</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#堆外内存回收"><span class="nav-number">1.2.</span> <span class="nav-text">堆外内存回收</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Episodexjm</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Episodexjm</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.7.1
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
